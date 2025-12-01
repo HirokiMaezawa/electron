@@ -298,6 +298,8 @@
     <div class="toolbar">
       <button id="open-file-btn" class="btn btn-primary">JSON配列を開く</button>
       <button id="save-file-btn" class="btn btn-ghost">保存</button>
+      <!-- ★ 追加：プレビューボタン（ここだけに置く） -->
+      <button id="preview-scene-btn" class="btn btn-ghost">プレビュー</button>
 
       <div class="file-info">
         ファイル: <strong><span id="file-path">(なし)</span></strong><br />
@@ -313,7 +315,10 @@
         </div>
 
         <div class="field-group">
-          <span class="field-label">シナリオテキスト<span class="field-help">（2行まで）</span></span>
+          <span class="field-label">
+            シナリオテキスト
+            <span class="field-help">（2行まで）</span>
+          </span>
           <div class="inline-inputs">
             <div>
               <input id="text1" type="text" placeholder="テキスト1を入力" />
@@ -325,7 +330,10 @@
         </div>
 
         <div class="field-group">
-          <label class="field-label" for="next">next<span class="field-help">（次のシーン番号）</span></label>
+          <label class="field-label" for="next">
+            next
+            <span class="field-help">（次のシーン番号）</span>
+          </label>
           <input id="next" type="number" />
         </div>
 
