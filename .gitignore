@@ -1,0 +1,48 @@
+# ========================================
+# Node / npm / TypeScript / Electron 用
+# ========================================
+
+# Node modules
+node_modules/
+
+# Build outputs
+dist/
+out/
+build/
+release/
+
+# Electron packager / builder outputs
+*.asar
+*.exe
+*.dmg
+*.app
+*.AppImage
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+logs/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# TypeScript build cache
+*.tsbuildinfo
+
+# Env files
+.env
+.env.local
+.env.development.local
+.env.production.local
+
+# VSCode settings
+.vscode/
+.history/
+
+# Optional: editor backups
+*.swp
+*.swo
+*.bak
