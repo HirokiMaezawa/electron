@@ -192,6 +192,7 @@
       padding: 4px 8px;
       text-align: center;
       font-size: 12px;
+      white-space: pre-line;
     }
 
     .drop-zone:hover {
@@ -382,17 +383,20 @@
           </div>
         </div>
 
-        <div class="scene-nav">
-          <button id="prev-scene-btn" class="btn btn-ghost">&lt; 前のシーン</button>
-          <button id="next-scene-btn" class="btn btn-ghost">次のシーン &gt;</button>
-          <button id="addNextScene" class="btn btn-primary">次のシーンを追加</button>
-        </div>
+ <div class="scene-nav">
+  <button id="prev-scene-btn" class="btn btn-ghost">&lt; 前のシーン</button>
+  <button id="next-scene-btn" class="btn btn-ghost">次のシーン &gt;</button>
+  <button id="addNextScene" class="btn btn-primary">次のシーンを追加</button>
+  <!-- ★ 追加：現在のシーン削除ボタン -->
+  <button id="delete-scene-btn" class="btn btn-danger">このシーンを削除</button>
+</div>
+
       </div>
 
       <!-- 右側：選択肢編集 -->
       <div class="choices-panel">
         <div class="panel-title">
-          <span>選択肢</span>
+          <span>選択肢(最後のシーンに追加してね)</span>
         </div>
 
         <div id="choices-container">

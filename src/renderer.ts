@@ -21,8 +21,7 @@ type OpenFileResult = {
 
 type Choice = {
   text: string;
-  nextFile: string;
-  nextIndex: number;
+  nextFile: string; // nextIndex は廃止
 };
 
 type FileApi = {
@@ -84,7 +83,7 @@ function renderChoices() {
   }
 
   const scene = scenes[currentIndex];
-  const choices = scene.choices ?? [];
+  const choices = scene?.choices ?? [];
 
   if (!choices.length) {
     container.innerHTML = '<div class="choices-empty">このシーンには、まだ選択肢がありません。</div>';
@@ -112,16 +111,10 @@ function renderChoices() {
         <input
           data-choice-index="${idx}"
           data-field="nextFile"
+          class="drop-zone"
           type="text"
+          placeholder = "選択肢を選んだ時に\n表示するjsonを\nドラッグアンドドロップしてね。"
           value="${choice.nextFile ?? ''}"
-        />
-      </label><br/>
-      <label>次インデックス:
-        <input
-          data-choice-index="${idx}"
-          data-field="nextIndex"
-          type="number"
-          value="${choice.nextIndex ?? 0}"
         />
       </label>
     `;
@@ -158,8 +151,10 @@ function loadCurrentSceneToForm() {
   (document.getElementById('text1') as HTMLInputElement).value = t1;
   (document.getElementById('text2') as HTMLInputElement).value = t2;
   (document.getElementById('next') as HTMLInputElement).value = String(scene?.next ?? 0);
-  (document.getElementById('backgroundName') as HTMLInputElement).value = scene?.backgroundName ?? '';
-  (document.getElementById('characterName') as HTMLInputElement).value = scene?.characterName ?? '';
+  (document.getElementById('backgroundName') as HTMLInputElement).value =
+    scene?.backgroundName ?? '';
+  (document.getElementById('characterName') as HTMLInputElement).value =
+    scene?.characterName ?? '';
   (document.getElementById('characterPicture') as HTMLInputElement).value =
     scene?.characterPicture ?? '';
   (document.getElementById('showBackground') as HTMLInputElement).checked =
@@ -208,7 +203,7 @@ function loadCurrentSceneToForm() {
 function addNextScene(defaultNext: number): Scene {
   const parts: Scene = {
     texts: [],
-    next: defaultNext,           // ← デフォルト next = 「自分の次」
+    next: defaultNext, // デフォルト next = 「自分の次」
     backgroundName: '',
     showBackground: false,
     characterName: '',
@@ -222,8 +217,50 @@ function addNextScene(defaultNext: number): Scene {
 }
 
 /**
+ * ★ next を全シーンについて再計算（index + 1）
+ *   UI からは編集しない前提なので、自動管理する
+ */
+function recalcSceneNextAll() {
+  scenes.forEach((scene, idx) => {
+    scene.next = idx + 1;
+  });
+}
+
+/**
+ * ★ 指定インデックスのシーン削除 + インデックス再計算
+ */
+function deleteCurrentScene() {
+  if (!scenes.length) return;
+
+  const deleteIndex = currentIndex;
+
+  // シーン配列から削除
+  scenes.splice(deleteIndex, 1);
+  // プレビューURLも同じ位置を削除
+  bgPreviewUrls.splice(deleteIndex, 1);
+  charPreviewUrls.splice(deleteIndex, 1);
+
+  if (!scenes.length) {
+    // 全部消えた場合
+    currentIndex = 0;
+    loadCurrentSceneToForm();
+    return;
+  }
+
+  // 削除後の currentIndex を補正
+  if (currentIndex >= scenes.length) {
+    currentIndex = scenes.length - 1;
+  }
+
+  // ★ next の再計算
+  recalcSceneNextAll();
+
+  loadCurrentSceneToForm();
+}
+
+/**
  * ★ 画像ドロップ用の共通ヘルパー
- *   - ファイル名は input に入れる（JSON 用）
+ *   - input / Scene には「pictures/ファイル名（拡張子なし）」を入れる（JSON 用）
  *   - ObjectURL は bgPreviewUrls / charPreviewUrls に覚えてプレビュー用に使う
  */
 function setupImageDropZone(dropId: string, inputId: string) {
@@ -265,14 +302,18 @@ function setupImageDropZone(dropId: string, inputId: string) {
       return;
     }
 
-    const fileName = file.name;
+    const fileName = file.name; // 例: bg01.png
 
-    // ★ ブラウザ的な安全な URL を作る（メモリ上だけで使う）
+    // ★ 拡張子を外して pictures/プレーン名 に変換（JSON 用）
+    const baseName = fileName.replace(/\.[^.]+$/, ''); // bg01
+    const jsonName = `pictures/${baseName}`;          // pictures/bg01
+
+    // ★ プレビュー用の ObjectURL
     const objectUrl = URL.createObjectURL(file);
 
-    // input にファイル名（JSON 用）をセット
-    input.value = fileName;
-    console.log(`[${dropId}] dropped:`, fileName);
+    // input に JSON 用の名前をセット
+    input.value = jsonName;
+    console.log(`[${dropId}] dropped:`, fileName, '→', jsonName);
 
     // ドロップゾーン自体にもサムネイル表示
     dropZone.style.backgroundImage = `url(${objectUrl})`;
@@ -280,18 +321,36 @@ function setupImageDropZone(dropId: string, inputId: string) {
     dropZone.style.backgroundPosition = 'center';
     dropZone.style.color = 'transparent';
 
-    // 今のシーンのプレビュー用 URL を更新（JSON には書かない）
-    if (scenes.length > 0 && currentIndex >= 0 && currentIndex < scenes.length) {
-      if (inputId === 'backgroundName') {
-        bgPreviewUrls[currentIndex] = objectUrl;
-        scenes[currentIndex].backgroundName = fileName;
-      }
+    // 今のシーンのプレビュー用 URL / JSON 用名を更新
+    // if (scenes.length > 0 && currentIndex >= 0 && currentIndex < scenes.length) {
+    //   if (inputId === 'backgroundName') {
+    //     bgPreviewUrls[currentIndex] = objectUrl;
+    //     scenes[currentIndex].backgroundName = jsonName;
+    //   }
 
-      if (inputId === 'characterPicture') {
-        charPreviewUrls[currentIndex] = objectUrl;
-        scenes[currentIndex].characterPicture = fileName;
-      }
-    }
+    //   if (inputId === 'characterPicture') {
+    //     charPreviewUrls[currentIndex] = objectUrl;
+    //     scenes[currentIndex].characterPicture = jsonName;
+    //   }
+    // }
+    // 今のシーンのプレビュー用 URL / JSON 用名を更新
+if (scenes.length > 0 && currentIndex >= 0 && currentIndex < scenes.length) {
+  const scene = scenes[currentIndex];
+  if (!scene) {
+    // noUncheckedIndexedAccess 対策：念のため
+    return;
+  }
+
+  if (inputId === 'backgroundName') {
+    bgPreviewUrls[currentIndex] = objectUrl;
+    scene.backgroundName = jsonName;
+  }
+
+  if (inputId === 'characterPicture') {
+    charPreviewUrls[currentIndex] = objectUrl;
+    scene.characterPicture = jsonName;
+  }
+}
 
     dropZone.style.borderColor = '#888';
   });
@@ -475,6 +534,7 @@ window.addEventListener('DOMContentLoaded', () => {
   const prevBtn = document.getElementById('prev-scene-btn') as HTMLButtonElement;
   const nextBtn = document.getElementById('next-scene-btn') as HTMLButtonElement;
   const addNextSceneBtn = document.getElementById('addNextScene') as HTMLButtonElement;
+  const deleteSceneBtn = document.getElementById('delete-scene-btn') as HTMLButtonElement | null;
   const pathSpan = document.getElementById('file-path') as HTMLSpanElement;
   const addChoiceBtn = document.getElementById('add-choice-btn') as HTMLButtonElement | null;
   const previewBtn = document.getElementById('preview-scene-btn') as HTMLButtonElement | null;
@@ -519,11 +579,10 @@ window.addEventListener('DOMContentLoaded', () => {
           showCharacter: raw.showCharacter ?? false,
           isTransitionToResult: raw.isTransitionToResult ?? false,
           eventPictureNum: raw.eventPictureNum ?? 0,
-          // ★ choices も1件ずつ正規化（nextIndex 無ければ 0）
+          // ★ choices も1件ずつ正規化
           choices: (raw.choices ?? []).map((c: any): Choice => ({
             text: c?.text ?? '',
             nextFile: c?.nextFile ?? '',
-            nextIndex: c?.nextIndex ?? 0,
           })),
         };
         return scene;
@@ -571,21 +630,28 @@ window.addEventListener('DOMContentLoaded', () => {
     loadCurrentSceneToForm();
   });
 
-  // ▼ 選択肢追加（1シーン最大2つまで / nextIndex デフォルト 0）
+  // ▼ シーン削除（現在のシーン）
+  if (deleteSceneBtn) {
+    deleteSceneBtn.addEventListener('click', () => {
+      if (!scenes.length) return;
+      deleteCurrentScene();
+    });
+  }
+
+  // ▼ 選択肢追加（1シーン最大2つまで）
   if (addChoiceBtn) {
     addChoiceBtn.addEventListener('click', () => {
       if (!scenes.length) return;
       const scene = scenes[currentIndex];
 
-      if (scene.choices.length >= 2) {
+      if (scene!.choices.length >= 2) {
         alert('選択肢は1シーンにつき最大2つまでです。');
         return;
       }
 
-      scene.choices.push({
+      scene?.choices.push({
         text: '',
         nextFile: '',
-        nextIndex: 0, // ← ここもデフォルト 0
       });
       renderChoices();
     });
@@ -602,12 +668,11 @@ window.addEventListener('DOMContentLoaded', () => {
 
     const idx = Number(indexAttr);
     const scene = scenes[currentIndex];
-    const choice = scene.choices[idx];
+    const choice = scene?.choices[idx];
     if (!choice) return;
 
     if (field === 'text') choice.text = target.value;
     if (field === 'nextFile') choice.nextFile = target.value;
-    if (field === 'nextIndex') choice.nextIndex = Number(target.value);
   });
 
   // ▼ 選択肢削除
@@ -619,10 +684,59 @@ window.addEventListener('DOMContentLoaded', () => {
 
     const idx = Number(deleteIndex);
     const scene = scenes[currentIndex];
-    if (!scene.choices[idx]) return;
+    if (!scene?.choices[idx]) return;
 
     scene.choices.splice(idx, 1);
     renderChoices();
+  });
+
+  // ▼ nextFile への JSON ドロップ対応
+  document.addEventListener('dragover', e => {
+    const target = e.target as HTMLElement;
+    if (target instanceof HTMLInputElement && target.dataset.field === 'nextFile') {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  });
+
+  document.addEventListener('drop', e => {
+    const target = e.target as HTMLElement;
+    if (!(target instanceof HTMLInputElement) || target.dataset.field !== 'nextFile') {
+      return;
+    }
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    const dragEvent = e as DragEvent;
+    const dt = dragEvent.dataTransfer;
+    if (!dt || !dt.files || dt.files.length === 0) return;
+
+    const file = dt.files[0];
+    const name = file?.name ?? '';
+
+    if (!name.toLowerCase().endsWith('.json')) {
+      alert('次ファイルには JSON ファイルをドロップしてください');
+      return;
+    }
+
+    // jsonAsset/ベース名 の形に変換
+    const base = name.replace(/\.json$/i, '');
+    const value = `jsonAsset/${base}`;
+
+    // input に反映
+    target.value = value;
+
+    // Choice オブジェクトにも反映
+    const indexAttr = target.dataset.choiceIndex;
+    if (indexAttr !== undefined && scenes.length) {
+      const idx = Number(indexAttr);
+      const scene = scenes[currentIndex];
+      const choice = scene?.choices[idx];
+      if (choice) {
+        choice.nextFile = value;
+      }
+    }
   });
 
   // ▼ シーンプレビュー
@@ -635,6 +749,7 @@ window.addEventListener('DOMContentLoaded', () => {
       // 今のフォーム内容を反映してからプレビュー
       saveFormToCurrentScene();
       const scene = scenes[currentIndex];
+      if(scene)
       showScenePreview(scene);
     });
   }
