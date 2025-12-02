@@ -203,12 +203,12 @@ function loadCurrentSceneToForm() {
 }
 
 /**
- * ★ 新しい空シーンを作成
+ * ★ 新しい空シーンを作成（デフォルト next を指定）
  */
-function addNextScene(): Scene {
+function addNextScene(defaultNext: number): Scene {
   const parts: Scene = {
     texts: [],
-    next: 0,
+    next: defaultNext,           // ← デフォルト next = 「自分の次」
     backgroundName: '',
     showBackground: false,
     characterName: '',
@@ -506,11 +506,12 @@ window.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
-      // choices がなくても動くように正規化
-      scenes = parsed.map((raw: any) => {
+      // choices / next がなくても動くように正規化
+      scenes = parsed.map((raw: any, index: number) => {
         const scene: Scene = {
           texts: raw.texts ?? [],
-          next: raw.next ?? 0,
+          // next が未定義なら「自分の次のシーン番号」をデフォルトにする
+          next: raw.next ?? (index + 1),
           backgroundName: raw.backgroundName ?? '',
           showBackground: raw.showBackground ?? false,
           characterName: raw.characterName ?? '',
@@ -518,7 +519,12 @@ window.addEventListener('DOMContentLoaded', () => {
           showCharacter: raw.showCharacter ?? false,
           isTransitionToResult: raw.isTransitionToResult ?? false,
           eventPictureNum: raw.eventPictureNum ?? 0,
-          choices: raw.choices ?? [],
+          // ★ choices も1件ずつ正規化（nextIndex 無ければ 0）
+          choices: (raw.choices ?? []).map((c: any): Choice => ({
+            text: c?.text ?? '',
+            nextFile: c?.nextFile ?? '',
+            nextIndex: c?.nextIndex ?? 0,
+          })),
         };
         return scene;
       });
@@ -553,7 +559,10 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // ▼ シーン追加
   addNextSceneBtn.addEventListener('click', () => {
-    scenes.push(addNextScene());
+    const newIndex = scenes.length;       // 追加されるシーンのインデックス
+    const defaultNext = newIndex + 1;     // デフォルト next = 「自分の次」
+
+    scenes.push(addNextScene(defaultNext));
     // プレビュー用 URL も 1 件分追加
     bgPreviewUrls.push(null);
     charPreviewUrls.push(null);
@@ -562,7 +571,7 @@ window.addEventListener('DOMContentLoaded', () => {
     loadCurrentSceneToForm();
   });
 
-  // ▼ 選択肢追加（1シーン最大2つまで）
+  // ▼ 選択肢追加（1シーン最大2つまで / nextIndex デフォルト 0）
   if (addChoiceBtn) {
     addChoiceBtn.addEventListener('click', () => {
       if (!scenes.length) return;
@@ -576,7 +585,7 @@ window.addEventListener('DOMContentLoaded', () => {
       scene.choices.push({
         text: '',
         nextFile: '',
-        nextIndex: 0,
+        nextIndex: 0, // ← ここもデフォルト 0
       });
       renderChoices();
     });

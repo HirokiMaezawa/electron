@@ -287,6 +287,11 @@
       justify-content: flex-end;
       margin-top: 8px;
     }
+
+    /* ★ next フィールドは UI から隠す（内部では値だけ持たせる） */
+    #next-field-group {
+      display: none;
+    }
   </style>
 </head>
 <body>
@@ -298,7 +303,7 @@
     <div class="toolbar">
       <button id="open-file-btn" class="btn btn-primary">JSON配列を開く</button>
       <button id="save-file-btn" class="btn btn-ghost">保存</button>
-      <!-- ★ 追加：プレビューボタン（ここだけに置く） -->
+      <!-- ★ プレビューボタン -->
       <button id="preview-scene-btn" class="btn btn-ghost">プレビュー</button>
 
       <div class="file-info">
@@ -329,7 +334,8 @@
           </div>
         </div>
 
-        <div class="field-group">
+        <!-- ★ next は内部用。UI からは非表示 -->
+        <div class="field-group" id="next-field-group">
           <label class="field-label" for="next">
             next
             <span class="field-help">（次のシーン番号）</span>
