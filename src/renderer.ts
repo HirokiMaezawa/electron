@@ -10,6 +10,8 @@ type Scene = {
   showCharacter: boolean;
   isTransitionToResult: boolean;
   eventPictureNum: number;
+  titleBackGroundName:string,
+  resultBackGroundName:string,
   choices: Choice[];
 };
 
@@ -21,29 +23,39 @@ type OpenFileResult = {
 
 type Choice = {
   text: string;
-  nextFile: string; // nextIndex は廃止
+  nextFile: string;
 };
 
 type FileApi = {
   openFile: () => Promise<OpenFileResult>;
   saveFile: (filePath: string, content: string) => Promise<{ ok: boolean }>;
+  listJsonFilesInSameDir?: (filePath: string) => Promise<string[]>;
 };
 
 let currentPath: string | null = null;
 let scenes: Scene[] = [];
 let currentIndex = 0;
 
-// ★ シーンごとの背景・キャラ画像プレビュー用 URL（JSON には書き込まない）
+// シーンごとの背景・キャラ画像プレビュー用 URL
 let bgPreviewUrls: (string | null)[] = [];
 let charPreviewUrls: (string | null)[] = [];
 
-/**
- * ★ 現在のフォーム内容を、現在のシーンオブジェクトに反映
- */
+// 同じディレクトリの JSON 一覧（プルダウン用）
+let jsonFileOptions: string[] = [];
+
+/** pictures/bg_room → pictures/bg_room.png みたいに URL を推測 */
+function resolveAssetUrlFromKey(key: string | null | undefined): string | null {
+  if (!key) return null;
+  if (/^(blob:|https?:|file:)/.test(key)) return key;
+  return `${key}.png`;
+}
+
+/** 現在のフォーム内容を、現在のシーンに反映 */
 function saveFormToCurrentScene() {
   if (!scenes.length) return;
 
   const scene = scenes[currentIndex];
+  if (!scene) return;
 
   const text1 = (document.getElementById('text1') as HTMLInputElement).value;
   const text2 = (document.getElementById('text2') as HTMLInputElement).value;
@@ -55,22 +67,26 @@ function saveFormToCurrentScene() {
   const showChar = (document.getElementById('showCharacter') as HTMLInputElement).checked;
   const isResult = (document.getElementById('isTransitionToResult') as HTMLInputElement).checked;
 
-  if (scene) {
-    scene.texts = [text1, text2].filter(t => t !== '');
-    scene.next = next;
-    scene.backgroundName = bgName;
-    scene.characterName = charName;
-    scene.characterPicture = charPic;
-    scene.showBackground = showBg;
-    scene.showCharacter = showChar;
-    scene.isTransitionToResult = isResult;
-    // choices はリアルタイムに更新しているのでここでは触らない
+  scene.texts = [text1, text2].filter(t => t !== '');
+  scene.next = next;
+  scene.backgroundName = bgName;
+  scene.characterName = charName;
+  scene.characterPicture = charPic;
+  scene.showBackground = showBg;
+  scene.showCharacter = showChar;
+  scene.isTransitionToResult = isResult;
+
+  if (!bgPreviewUrls[currentIndex]) {
+    bgPreviewUrls[currentIndex] = resolveAssetUrlFromKey(bgName);
   }
+  if (!charPreviewUrls[currentIndex]) {
+    charPreviewUrls[currentIndex] = resolveAssetUrlFromKey(charPic);
+  }
+
+  renderSceneList();
 }
 
-/**
- * ★ 選択肢一覧を描画
- */
+/** 選択肢一覧を描画（nextFile はプルダウン） */
 function renderChoices() {
   const container = document.getElementById('choices-container') as HTMLDivElement | null;
   if (!container) return;
@@ -94,6 +110,17 @@ function renderChoices() {
     const div = document.createElement('div');
     div.className = 'choice-item';
 
+    const optionsHtml =
+      '<option value="">（未選択）</option>' +
+      jsonFileOptions
+        .map(name => {
+          const base = name.replace(/\.json$/i, '');
+          const value = `jsonAsset/${base}`;
+          const selected = choice.nextFile === value ? ' selected' : '';
+          return `<option value="${value}"${selected}>${name}</option>`;
+        })
+        .join('');
+
     div.innerHTML = `
       <div class="choice-header">
         <span>選択肢 ${idx + 1}</span>
@@ -108,14 +135,12 @@ function renderChoices() {
         />
       </label><br/>
       <label>次ファイル:
-        <input
+        <select
           data-choice-index="${idx}"
           data-field="nextFile"
-          class="drop-zone"
-          type="text"
-          placeholder = "選択肢を選んだ時に\n表示するjsonを\nドラッグアンドドロップしてね。"
-          value="${choice.nextFile ?? ''}"
-        />
+        >
+          ${optionsHtml}
+        </select>
       </label>
     `;
 
@@ -123,9 +148,85 @@ function renderChoices() {
   });
 }
 
-/**
- * ★ 現在のシーンをフォームに表示
- */
+/** シーン一覧を描画（左カラム） */
+function renderSceneList() {
+  const listEl = document.getElementById('scene-list') as HTMLDivElement | null;
+  if (!listEl) return;
+
+  listEl.innerHTML = '';
+
+  if (!scenes.length) {
+    const empty = document.createElement('div');
+    empty.className = 'choices-empty';
+    empty.textContent = 'シーンがありません。';
+    listEl.appendChild(empty);
+    return;
+  }
+
+  scenes.forEach((scene, idx) => {
+    const item = document.createElement('div');
+    item.className = 'scene-list-item' + (idx === currentIndex ? ' active' : '');
+    item.dataset.index = String(idx);
+
+    const thumb = document.createElement('div');
+    thumb.className = 'scene-list-thumb';
+
+    const bgUrl = bgPreviewUrls[idx];
+    if (scene.showBackground && bgUrl) {
+      thumb.style.backgroundImage = `url(${bgUrl})`;
+      thumb.style.backgroundSize = 'cover';
+      thumb.style.backgroundPosition = 'center';
+      thumb.textContent = '';
+    } else {
+      thumb.style.backgroundImage = '';
+      thumb.textContent = `#${idx + 1}`;
+    }
+
+    // ★ キャラ用レイヤー（showCharacter は無視して、URL があれば表示）
+    const charLayer = document.createElement('div');
+    charLayer.className = 'scene-list-thumb-char';
+    const charUrl = charPreviewUrls[idx];
+    if (charUrl) {
+      charLayer.style.backgroundImage = `url(${charUrl})`;
+    }
+    thumb.appendChild(charLayer);
+
+    const main = document.createElement('div');
+    main.className = 'scene-list-main';
+
+    const header = document.createElement('div');
+    header.className = 'scene-list-item-header';
+
+    const indexSpan = document.createElement('span');
+    indexSpan.className = 'scene-list-index';
+    indexSpan.textContent = `#${idx + 1}`;
+
+    const flagsSpan = document.createElement('span');
+    flagsSpan.className = 'scene-list-flags';
+    const flags: string[] = [];
+    if (scene.isTransitionToResult) flags.push('結果へ');
+    if (scene.choices?.length) flags.push(`選択肢${scene.choices.length}`);
+    flagsSpan.textContent = flags.join('・');
+
+    header.appendChild(indexSpan);
+    header.appendChild(flagsSpan);
+
+    const textSpan = document.createElement('div');
+    textSpan.className = 'scene-list-text';
+    const firstLine = scene.texts?.[0] ?? '';
+    textSpan.textContent = firstLine || '(テキストなし)';
+
+    main.appendChild(header);
+    main.appendChild(textSpan);
+
+    item.appendChild(thumb);
+    item.appendChild(main);
+
+    listEl.appendChild(item);
+  });
+}
+
+/** 現在のシーンをフォームに表示 */
 function loadCurrentSceneToForm() {
   const indexLabel = document.getElementById('scene-index') as HTMLSpanElement;
   const totalLabel = document.getElementById('scene-total') as HTMLSpanElement;
@@ -137,6 +238,7 @@ function loadCurrentSceneToForm() {
     if (container) {
       container.innerHTML = '<div class="choices-empty">このシーンには、まだ選択肢がありません。</div>';
     }
+    renderSceneList();
     return;
   }
 
@@ -164,7 +266,6 @@ function loadCurrentSceneToForm() {
   (document.getElementById('isTransitionToResult') as HTMLInputElement).checked =
     scene?.isTransitionToResult ?? false;
 
-  // ★ ドロップゾーンの見た目も、プレビュー URL に合わせて更新
   const bgDrop = document.getElementById('background-drop') as HTMLDivElement | null;
   if (bgDrop) {
     const url = bgPreviewUrls[currentIndex] ?? null;
@@ -193,17 +294,15 @@ function loadCurrentSceneToForm() {
     }
   }
 
-  // ★ シーンが切り替わったら選択肢UIも更新
   renderChoices();
+  renderSceneList();
 }
 
-/**
- * ★ 新しい空シーンを作成（デフォルト next を指定）
- */
+/** 新しい空シーンを作成 */
 function addNextScene(defaultNext: number): Scene {
-  const parts: Scene = {
+  return {
     texts: [],
-    next: defaultNext, // デフォルト next = 「自分の次」
+    next: defaultNext,
     backgroundName: '',
     showBackground: false,
     characterName: '',
@@ -213,56 +312,38 @@ function addNextScene(defaultNext: number): Scene {
     eventPictureNum: 0,
     choices: [],
   };
-  return parts;
 }
 
-/**
- * ★ next を全シーンについて再計算（index + 1）
- *   UI からは編集しない前提なので、自動管理する
- */
 function recalcSceneNextAll() {
   scenes.forEach((scene, idx) => {
     scene.next = idx + 1;
   });
 }
 
-/**
- * ★ 指定インデックスのシーン削除 + インデックス再計算
- */
 function deleteCurrentScene() {
   if (!scenes.length) return;
 
   const deleteIndex = currentIndex;
 
-  // シーン配列から削除
   scenes.splice(deleteIndex, 1);
-  // プレビューURLも同じ位置を削除
   bgPreviewUrls.splice(deleteIndex, 1);
   charPreviewUrls.splice(deleteIndex, 1);
 
   if (!scenes.length) {
-    // 全部消えた場合
     currentIndex = 0;
     loadCurrentSceneToForm();
     return;
   }
 
-  // 削除後の currentIndex を補正
   if (currentIndex >= scenes.length) {
     currentIndex = scenes.length - 1;
   }
 
-  // ★ next の再計算
   recalcSceneNextAll();
-
   loadCurrentSceneToForm();
 }
 
-/**
- * ★ 画像ドロップ用の共通ヘルパー
- *   - input / Scene には「pictures/ファイル名（拡張子なし）」を入れる（JSON 用）
- *   - ObjectURL は bgPreviewUrls / charPreviewUrls に覚えてプレビュー用に使う
- */
+/** 画像ドロップ用：pictures/プレーン名 に変換して保持 */
 function setupImageDropZone(dropId: string, inputId: string) {
   const dropZone = document.getElementById(dropId) as HTMLDivElement | null;
   const input = document.getElementById(inputId) as HTMLInputElement | null;
@@ -302,57 +383,47 @@ function setupImageDropZone(dropId: string, inputId: string) {
       return;
     }
 
-    const fileName = file.name; // 例: bg01.png
-
-    // ★ 拡張子を外して pictures/プレーン名 に変換（JSON 用）
-    const baseName = fileName.replace(/\.[^.]+$/, ''); // bg01
-    const jsonName = `pictures/${baseName}`;          // pictures/bg01
-
-    // ★ プレビュー用の ObjectURL
+    const fileName = file.name;
+    const baseName = fileName.replace(/\.[^.]+$/, '');
+    const jsonName = `pictures/${baseName}`;
     const objectUrl = URL.createObjectURL(file);
 
-    // input に JSON 用の名前をセット
     input.value = jsonName;
-    console.log(`[${dropId}] dropped:`, fileName, '→', jsonName);
 
-    // ドロップゾーン自体にもサムネイル表示
     dropZone.style.backgroundImage = `url(${objectUrl})`;
     dropZone.style.backgroundSize = 'cover';
     dropZone.style.backgroundPosition = 'center';
     dropZone.style.color = 'transparent';
 
-    // 今のシーンのプレビュー用 URL / JSON 用名を更新
-    // if (scenes.length > 0 && currentIndex >= 0 && currentIndex < scenes.length) {
-    //   if (inputId === 'backgroundName') {
-    //     bgPreviewUrls[currentIndex] = objectUrl;
-    //     scenes[currentIndex].backgroundName = jsonName;
-    //   }
+    if (scenes.length > 0 && currentIndex >= 0 && currentIndex < scenes.length) {
+      const scene = scenes[currentIndex];
+      if (!scene) {
+        dropZone.style.borderColor = '#888';
+        return;
+      }
 
-    //   if (inputId === 'characterPicture') {
-    //     charPreviewUrls[currentIndex] = objectUrl;
-    //     scenes[currentIndex].characterPicture = jsonName;
-    //   }
-    // }
-    // 今のシーンのプレビュー用 URL / JSON 用名を更新
-if (scenes.length > 0 && currentIndex >= 0 && currentIndex < scenes.length) {
-  const scene = scenes[currentIndex];
-  if (!scene) {
-    // noUncheckedIndexedAccess 対策：念のため
-    return;
-  }
+      if (inputId === 'backgroundName') {
+        bgPreviewUrls[currentIndex] = objectUrl;
+        scene.backgroundName = jsonName;
+      }
 
-  if (inputId === 'backgroundName') {
-    bgPreviewUrls[currentIndex] = objectUrl;
-    scene.backgroundName = jsonName;
-  }
+      if (inputId === 'characterPicture') {
+        charPreviewUrls[currentIndex] = objectUrl;
+        scene.characterPicture = jsonName;
 
-  if (inputId === 'characterPicture') {
-    charPreviewUrls[currentIndex] = objectUrl;
-    scene.characterPicture = jsonName;
-  }
-}
+        // ★ キャラをドロップしたら showCharacter を強制的に ON にする
+        scene.showCharacter = true;
+        const showCharCheckbox = document.getElementById('showCharacter') as HTMLInputElement | null;
+        if (showCharCheckbox) {
+          showCharCheckbox.checked = true;
+        }
+      }
+    }
 
     dropZone.style.borderColor = '#888';
+
+    // サムネイル更新
+    renderSceneList();
   });
 
   if (!dropZone.style.borderWidth) {
@@ -360,9 +431,7 @@ if (scenes.length > 0 && currentIndex >= 0 && currentIndex < scenes.length) {
   }
 }
 
-/**
- * ★ シーンプレビュー（簡易ノベル風ダイアログ）
- */
+/** シーンプレビュー（簡易ノベル風） */
 function showScenePreview(scene: Scene) {
   const overlay = document.createElement('div');
   overlay.style.position = 'fixed';
@@ -427,7 +496,6 @@ function showScenePreview(scene: Scene) {
   bg.style.fontSize = '13px';
   bg.style.position = 'relative';
 
-  // ★ 今のシーン用のプレビュー URL を参照
   const bgUrl = bgPreviewUrls[currentIndex] ?? null;
   const charUrl = charPreviewUrls[currentIndex] ?? null;
 
@@ -443,13 +511,14 @@ function showScenePreview(scene: Scene) {
       : '背景非表示';
   }
 
-  // ★ キャラ画像があれば右下に表示
-  if (scene.showCharacter && charUrl) {
+  // ★ charUrl があれば必ずキャラを表示
+  if (charUrl) {
     const charImg = document.createElement('img');
     charImg.src = charUrl;
     charImg.style.position = 'absolute';
+    charImg.style.left = '50%';
+    charImg.style.transform = 'translateX(-50%)';
     charImg.style.bottom = '8px';
-    charImg.style.right = '10px';
     charImg.style.maxHeight = '80%';
     charImg.style.objectFit = 'contain';
     charImg.style.filter = 'drop-shadow(0 8px 16px rgba(0,0,0,0.6))';
@@ -469,9 +538,8 @@ function showScenePreview(scene: Scene) {
   const nameLine = document.createElement('div');
   nameLine.style.fontWeight = '600';
   nameLine.style.color = '#fbbf24';
-  nameLine.textContent = scene.showCharacter
-    ? scene.characterName || '(キャラ名未設定)'
-    : '';
+  nameLine.textContent =
+    scene.characterName && charUrl ? scene.characterName : '';
 
   const textLine = document.createElement('div');
   textLine.textContent = scene.texts.join('\n');
@@ -525,9 +593,7 @@ function showScenePreview(scene: Scene) {
   });
 }
 
-/**
- * ★ エントリーポイント
- */
+/** エントリーポイント */
 window.addEventListener('DOMContentLoaded', () => {
   const openBtn = document.getElementById('open-file-btn') as HTMLButtonElement;
   const saveBtn = document.getElementById('save-file-btn') as HTMLButtonElement;
@@ -538,8 +604,8 @@ window.addEventListener('DOMContentLoaded', () => {
   const pathSpan = document.getElementById('file-path') as HTMLSpanElement;
   const addChoiceBtn = document.getElementById('add-choice-btn') as HTMLButtonElement | null;
   const previewBtn = document.getElementById('preview-scene-btn') as HTMLButtonElement | null;
+  const sceneListEl = document.getElementById('scene-list') as HTMLDivElement | null;
 
-  // ★ preload 側が exposeInMainWorld('fileApi2', ...) で出している前提
   const api = (window as any).fileApi2 as FileApi | undefined;
 
   if (!api) {
@@ -547,17 +613,56 @@ window.addEventListener('DOMContentLoaded', () => {
     return;
   }
 
-  // ★ ドロップゾーン初期化
   setupImageDropZone('background-drop', 'backgroundName');
   setupImageDropZone('character-drop', 'characterPicture');
 
-  // ▼ ファイルを開く
+  // シーン一覧：クリックで移動、ダブルクリックでプレビュー
+  if (sceneListEl) {
+    sceneListEl.addEventListener('click', e => {
+      const target = e.target as HTMLElement;
+      const item = target.closest('.scene-list-item') as HTMLDivElement | null;
+      if (!item) return;
+      const idxStr = item.dataset.index;
+      if (idxStr == null) return;
+
+      saveFormToCurrentScene();
+      currentIndex = Number(idxStr);
+      loadCurrentSceneToForm();
+    });
+
+    sceneListEl.addEventListener('dblclick', e => {
+      const target = e.target as HTMLElement;
+      const item = target.closest('.scene-list-item') as HTMLDivElement | null;
+      if (!item) return;
+      const idxStr = item.dataset.index;
+      if (idxStr == null) return;
+
+      const idx = Number(idxStr);
+      const scene = scenes[idx];
+      if (scene) {
+        currentIndex = idx;
+        loadCurrentSceneToForm();
+        showScenePreview(scene);
+      }
+    });
+  }
+
+  // ファイルを開く
   openBtn.addEventListener('click', async () => {
     const result = await api.openFile();
     if (result.canceled || !result.content) return;
 
     currentPath = result.filePath ?? null;
     pathSpan.textContent = currentPath ?? '(なし)';
+
+    jsonFileOptions = [];
+    if (currentPath && api.listJsonFilesInSameDir) {
+      try {
+        jsonFileOptions = await api.listJsonFilesInSameDir(currentPath);
+      } catch (err) {
+        console.error('JSON ファイル一覧の取得に失敗:', err);
+      }
+    }
 
     try {
       const parsed = JSON.parse(result.content);
@@ -566,12 +671,10 @@ window.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
-      // choices / next がなくても動くように正規化
       scenes = parsed.map((raw: any, index: number) => {
         const scene: Scene = {
           texts: raw.texts ?? [],
-          // next が未定義なら「自分の次のシーン番号」をデフォルトにする
-          next: raw.next ?? (index + 1),
+          next: raw.next ?? index + 1,
           backgroundName: raw.backgroundName ?? '',
           showBackground: raw.showBackground ?? false,
           characterName: raw.characterName ?? '',
@@ -579,7 +682,6 @@ window.addEventListener('DOMContentLoaded', () => {
           showCharacter: raw.showCharacter ?? false,
           isTransitionToResult: raw.isTransitionToResult ?? false,
           eventPictureNum: raw.eventPictureNum ?? 0,
-          // ★ choices も1件ずつ正規化
           choices: (raw.choices ?? []).map((c: any): Choice => ({
             text: c?.text ?? '',
             nextFile: c?.nextFile ?? '',
@@ -588,9 +690,14 @@ window.addEventListener('DOMContentLoaded', () => {
         return scene;
       });
 
-      // ★ プレビュー用 URL 配列を初期化（全 null）
-      bgPreviewUrls = new Array(scenes.length).fill(null);
-      charPreviewUrls = new Array(scenes.length).fill(null);
+      bgPreviewUrls = scenes.map(s => resolveAssetUrlFromKey(s.backgroundName));
+      charPreviewUrls = scenes.map(s => resolveAssetUrlFromKey(s.characterPicture));
+
+      if (!scenes.length) {
+        scenes.push(addNextScene(1));
+        bgPreviewUrls.push(null);
+        charPreviewUrls.push(null);
+      }
 
       currentIndex = 0;
       loadCurrentSceneToForm();
@@ -600,7 +707,7 @@ window.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // ▼ 前のシーン
+  // 前のシーン
   prevBtn.addEventListener('click', () => {
     if (!scenes.length) return;
     saveFormToCurrentScene();
@@ -608,7 +715,7 @@ window.addEventListener('DOMContentLoaded', () => {
     loadCurrentSceneToForm();
   });
 
-  // ▼ 次のシーン
+  // 次のシーン
   nextBtn.addEventListener('click', () => {
     if (!scenes.length) return;
     saveFormToCurrentScene();
@@ -616,13 +723,12 @@ window.addEventListener('DOMContentLoaded', () => {
     loadCurrentSceneToForm();
   });
 
-  // ▼ シーン追加
+  // シーン追加
   addNextSceneBtn.addEventListener('click', () => {
-    const newIndex = scenes.length;       // 追加されるシーンのインデックス
-    const defaultNext = newIndex + 1;     // デフォルト next = 「自分の次」
+    const newIndex = scenes.length;
+    const defaultNext = newIndex + 1;
 
     scenes.push(addNextScene(defaultNext));
-    // プレビュー用 URL も 1 件分追加
     bgPreviewUrls.push(null);
     charPreviewUrls.push(null);
 
@@ -630,7 +736,7 @@ window.addEventListener('DOMContentLoaded', () => {
     loadCurrentSceneToForm();
   });
 
-  // ▼ シーン削除（現在のシーン）
+  // シーン削除
   if (deleteSceneBtn) {
     deleteSceneBtn.addEventListener('click', () => {
       if (!scenes.length) return;
@@ -638,13 +744,13 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // ▼ 選択肢追加（1シーン最大2つまで）
+  // 選択肢追加
   if (addChoiceBtn) {
     addChoiceBtn.addEventListener('click', () => {
       if (!scenes.length) return;
       const scene = scenes[currentIndex];
 
-      if (scene!.choices.length >= 2) {
+      if (scene && scene.choices.length >= 2) {
         alert('選択肢は1シーンにつき最大2つまでです。');
         return;
       }
@@ -654,14 +760,23 @@ window.addEventListener('DOMContentLoaded', () => {
         nextFile: '',
       });
       renderChoices();
+      renderSceneList();
     });
   }
 
-  // ▼ 選択肢入力の変更を反映
+  // 選択肢入力の変更を反映
   document.addEventListener('input', e => {
-    const target = e.target as HTMLInputElement;
-    const indexAttr = target.dataset.choiceIndex;
-    const field = target.dataset.field;
+    const target = e.target as HTMLInputElement | HTMLSelectElement;
+
+    if (
+      !(target instanceof HTMLInputElement) &&
+      !(target instanceof HTMLSelectElement)
+    ) {
+      return;
+    }
+
+    const indexAttr = (target as HTMLElement).dataset.choiceIndex;
+    const field = (target as HTMLElement).dataset.field;
 
     if (indexAttr === undefined || !field) return;
     if (!scenes.length) return;
@@ -673,9 +788,11 @@ window.addEventListener('DOMContentLoaded', () => {
 
     if (field === 'text') choice.text = target.value;
     if (field === 'nextFile') choice.nextFile = target.value;
+
+    renderSceneList();
   });
 
-  // ▼ 選択肢削除
+  // 選択肢削除
   document.addEventListener('click', e => {
     const target = e.target as HTMLElement;
     const deleteIndex = target.dataset.deleteChoice;
@@ -688,73 +805,23 @@ window.addEventListener('DOMContentLoaded', () => {
 
     scene.choices.splice(idx, 1);
     renderChoices();
+    renderSceneList();
   });
 
-  // ▼ nextFile への JSON ドロップ対応
-  document.addEventListener('dragover', e => {
-    const target = e.target as HTMLElement;
-    if (target instanceof HTMLInputElement && target.dataset.field === 'nextFile') {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-  });
-
-  document.addEventListener('drop', e => {
-    const target = e.target as HTMLElement;
-    if (!(target instanceof HTMLInputElement) || target.dataset.field !== 'nextFile') {
-      return;
-    }
-
-    e.preventDefault();
-    e.stopPropagation();
-
-    const dragEvent = e as DragEvent;
-    const dt = dragEvent.dataTransfer;
-    if (!dt || !dt.files || dt.files.length === 0) return;
-
-    const file = dt.files[0];
-    const name = file?.name ?? '';
-
-    if (!name.toLowerCase().endsWith('.json')) {
-      alert('次ファイルには JSON ファイルをドロップしてください');
-      return;
-    }
-
-    // jsonAsset/ベース名 の形に変換
-    const base = name.replace(/\.json$/i, '');
-    const value = `jsonAsset/${base}`;
-
-    // input に反映
-    target.value = value;
-
-    // Choice オブジェクトにも反映
-    const indexAttr = target.dataset.choiceIndex;
-    if (indexAttr !== undefined && scenes.length) {
-      const idx = Number(indexAttr);
-      const scene = scenes[currentIndex];
-      const choice = scene?.choices[idx];
-      if (choice) {
-        choice.nextFile = value;
-      }
-    }
-  });
-
-  // ▼ シーンプレビュー
+  // プレビューボタン
   if (previewBtn) {
     previewBtn.addEventListener('click', () => {
       if (!scenes.length) {
         alert('シーンがありません');
         return;
       }
-      // 今のフォーム内容を反映してからプレビュー
       saveFormToCurrentScene();
       const scene = scenes[currentIndex];
-      if(scene)
-      showScenePreview(scene);
+      if (scene) showScenePreview(scene);
     });
   }
 
-  // ▼ 保存（全配列を上書き）
+  // 保存
   saveBtn.addEventListener('click', async () => {
     if (!currentPath) {
       alert('まだファイルが開かれていません');

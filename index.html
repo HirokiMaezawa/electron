@@ -1,4 +1,3 @@
-<!-- index.html（プロジェクトルート直下） -->
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -30,7 +29,7 @@
     }
 
     .app-container {
-      max-width: 1100px;
+      max-width: 1200px;
       margin: 0 auto;
       background: #ffffff;
       border-radius: 12px;
@@ -81,20 +80,41 @@
       background: #e0e7ff;
     }
 
+    .btn-danger {
+      background: #fee2e2;
+      color: #b91c1c;
+    }
+
+    .btn-danger:hover {
+      background: #fecaca;
+    }
+
     .file-info {
       font-size: 12px;
       color: #555;
       margin-left: auto;
+      text-align: right;
     }
 
     .file-info strong {
       font-weight: 600;
     }
 
+    /* 3カラムレイアウト：左＝シーン一覧 / 中央＝内容 / 右＝選択肢 */
     .main-layout {
       display: grid;
-      grid-template-columns: minmax(0, 2fr) minmax(0, 1.4fr);
+      grid-template-columns: 260px minmax(0, 2fr) minmax(0, 1.4fr);
       gap: 24px;
+      align-items: flex-start;
+    }
+
+    @media (max-width: 1100px) {
+      .main-layout {
+        grid-template-columns: 220px minmax(0, 2fr);
+      }
+      .choices-panel {
+        grid-column: 1 / -1;
+      }
     }
 
     @media (max-width: 900px) {
@@ -103,7 +123,7 @@
       }
     }
 
-    /* 左：シーン編集エリア */
+    /* 汎用パネル */
     .panel {
       background: #f9fafb;
       border-radius: 10px;
@@ -145,7 +165,8 @@
     }
 
     input[type="text"],
-    input[type="number"] {
+    input[type="number"],
+    select {
       width: 100%;
       padding: 6px 8px;
       border-radius: 6px;
@@ -153,10 +174,12 @@
       font-size: 13px;
       outline: none;
       transition: border-color 0.15s ease, box-shadow 0.15s ease;
+      background: #fff;
     }
 
     input[type="text"]:focus,
-    input[type="number"]:focus {
+    input[type="number"]:focus,
+    select:focus {
       border-color: #2563eb;
       box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.35);
     }
@@ -224,10 +247,112 @@
       display: flex;
       gap: 8px;
       margin-top: 12px;
+      flex-wrap: wrap;
     }
 
     .scene-nav .btn {
       flex: 0 0 auto;
+    }
+
+    /* シーン一覧パネル（左） */
+    .scene-list-panel {
+      background: #f9fafb;
+      border-radius: 10px;
+      padding: 12px 10px;
+      border: 1px solid #e5e7eb;
+      max-height: 640px;
+      overflow-y: auto;
+    }
+
+    .scene-list-panel .panel-title {
+      margin-bottom: 8px;
+    }
+
+    .scene-list {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .scene-list-item {
+      display: flex;
+      gap: 8px;
+      padding: 6px 8px;
+      border-radius: 8px;
+      margin-bottom: 2px;
+      cursor: pointer;
+      font-size: 12px;
+      align-items: center;
+      transition: background-color 0.12s ease, box-shadow 0.12s ease;
+    }
+
+    .scene-list-item:hover {
+      background: #e5edff;
+    }
+
+    .scene-list-item.active {
+      background: #dbeafe;
+      box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.3);
+    }
+
+    /* 左の小サムネ（背景） */
+    .scene-list-thumb {
+      width: 56px;
+      height: 40px;
+      border-radius: 6px;
+      background: #e5e7eb;
+      position: relative;
+      overflow: hidden;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      color: #6b7280;
+    }
+
+    /* サムネ上のキャラアイコン */
+    .scene-list-thumb-char {
+      position: absolute;
+      bottom: -4px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 40px;
+      height: 40px;
+      background-size: contain;
+      background-position: center bottom;
+      background-repeat: no-repeat;
+      filter: drop-shadow(0 3px 6px rgba(0,0,0,0.5));
+    }
+
+    .scene-list-main {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .scene-list-item-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2px;
+    }
+
+    .scene-list-index {
+      font-weight: 600;
+      color: #4b5563;
+    }
+
+    .scene-list-flags {
+      font-size: 10px;
+      color: #9ca3af;
+    }
+
+    .scene-list-text {
+      font-size: 11px;
+      color: #374151;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      overflow: hidden;
     }
 
     /* 右：選択肢エリア */
@@ -254,7 +379,7 @@
     }
 
     .choice-item input[type="text"],
-    .choice-item input[type="number"] {
+    .choice-item select {
       font-size: 12px;
       padding: 4px 6px;
     }
@@ -266,15 +391,6 @@
       margin-bottom: 4px;
       font-size: 12px;
       color: #6b7280;
-    }
-
-    .btn-danger {
-      background: #fee2e2;
-      color: #b91c1c;
-    }
-
-    .btn-danger:hover {
-      background: #fecaca;
     }
 
     .choices-empty {
@@ -289,7 +405,7 @@
       margin-top: 8px;
     }
 
-    /* ★ next フィールドは UI から隠す（内部では値だけ持たせる） */
+    /* next フィールドは UI から隠す（内部では値だけ持たせる） */
     #next-field-group {
       display: none;
     }
@@ -304,7 +420,6 @@
     <div class="toolbar">
       <button id="open-file-btn" class="btn btn-primary">JSON配列を開く</button>
       <button id="save-file-btn" class="btn btn-ghost">保存</button>
-      <!-- ★ プレビューボタン -->
       <button id="preview-scene-btn" class="btn btn-ghost">プレビュー</button>
 
       <div class="file-info">
@@ -314,7 +429,15 @@
     </div>
 
     <div class="main-layout">
-      <!-- 左側：シーン編集 -->
+      <!-- 左：シーン一覧 -->
+      <div class="scene-list-panel">
+        <div class="panel-title">
+          <span>シーン一覧</span>
+        </div>
+        <div id="scene-list" class="scene-list"></div>
+      </div>
+
+      <!-- 中央：シーン編集 -->
       <div class="panel">
         <div class="panel-title">
           <span>シーン内容</span>
@@ -335,7 +458,7 @@
           </div>
         </div>
 
-        <!-- ★ next は内部用。UI からは非表示 -->
+        <!-- next は内部用。UI からは非表示 -->
         <div class="field-group" id="next-field-group">
           <label class="field-label" for="next">
             next
@@ -347,9 +470,10 @@
         <div class="field-group">
           <span class="field-label">背景画像</span>
           <div id="background-drop" class="drop-zone">
-            ここに背景画像ファイルをドロップすると、ファイル名だけを設定します
+            ここに背景画像ファイルをドロップすると、<br />
+            pictures/ファイル名（拡張子なし）が設定されます
           </div>
-          <input id="backgroundName" type="text" placeholder="背景画像ファイル名（例: bg_room.png）" />
+          <input id="backgroundName" type="text" placeholder="背景画像キー（例: pictures/bg_room）" />
         </div>
 
         <div class="field-group">
@@ -360,9 +484,10 @@
         <div class="field-group">
           <span class="field-label">キャラ画像</span>
           <div id="character-drop" class="drop-zone">
-            ここにキャラ画像ファイルをドロップすると、ファイル名だけを設定します
+            ここにキャラ画像ファイルをドロップすると、<br />
+            pictures/ファイル名（拡張子なし）が設定されます
           </div>
-          <input id="characterPicture" type="text" placeholder="キャラ画像ファイル名（例: char_yuuki.png）" />
+          <input id="characterPicture" type="text" placeholder="キャラ画像キー（例: pictures/char_yuuki）" />
         </div>
 
         <div class="field-group">
@@ -378,25 +503,22 @@
             </label>
             <label>
               <input id="isTransitionToResult" type="checkbox" />
-              <span>結果画面へ遷移（ONにすると、このシーンの後に結果画面へ移動します。最後のシーン向け）</span>
+              <span>結果画面へ遷移（ONにすると、このシーンの後に結果画面へ移動します）</span>
             </label>
           </div>
         </div>
 
- <div class="scene-nav">
-  <button id="prev-scene-btn" class="btn btn-ghost">&lt; 前のシーン</button>
-  <button id="next-scene-btn" class="btn btn-ghost">次のシーン &gt;</button>
-  <button id="addNextScene" class="btn btn-primary">次のシーンを追加</button>
-  <!-- ★ 追加：現在のシーン削除ボタン -->
-  <button id="delete-scene-btn" class="btn btn-danger">このシーンを削除</button>
-</div>
-
+        <div class="scene-nav">
+          <button id="prev-scene-btn" class="btn btn-ghost">&lt; 前のシーン</button>
+          <button id="next-scene-btn" class="btn btn-ghost">次のシーン &gt;</button>
+          <button id="addNextScene" class="btn btn-primary">次のシーンを追加</button>
+          <button id="delete-scene-btn" class="btn btn-danger">このシーンを削除</button>
+        </div>
       </div>
-
-      <!-- 右側：選択肢編集 -->
+      <!-- 右：選択肢編集 -->
       <div class="choices-panel">
         <div class="panel-title">
-          <span>選択肢(最後のシーンに追加してね)</span>
+          <span>選択肢（最後のシーンに追加してね）</span>
         </div>
 
         <div id="choices-container">
