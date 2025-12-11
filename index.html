@@ -2,166 +2,328 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title>シナリオJSONエディタ</title>
+  <title>シナリオ JSON エディタ</title>
+
   <style>
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       margin: 0;
-      padding: 24px;
-      background: #f3f5fb;
-      color: #222;
-    }
-
-    h1 {
-      margin: 0 0 8px;
-      font-size: 24px;
-      letter-spacing: 0.05em;
-    }
-
-    .app-subtitle {
-      margin: 0 0 24px;
-      color: #666;
-      font-size: 13px;
-    }
-
-    .app-container {
-      max-width: 1200px;
-      margin: 0 auto;
-      background: #ffffff;
-      border-radius: 12px;
-      box-shadow: 0 12px 30px rgba(15, 30, 70, 0.12);
-      padding: 20px 24px 24px;
-    }
-
-    .toolbar {
+      padding: 0;
       display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 16px;
-      flex-wrap: wrap;
+      height: 100vh;
+      overflow: hidden;
+      background: radial-gradient(circle at top, #e0f2fe 0, #f3f4f6 45%, #e5e7eb 100%);
+      color: #0f172a;
     }
 
-    .btn {
-      border: none;
-      border-radius: 999px;
-      padding: 8px 16px;
-      font-size: 13px;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      transition: transform 0.05s ease, box-shadow 0.05s ease, background-color 0.15s ease;
-      user-select: none;
-      white-space: nowrap;
+    /* ========================== サイドバー ========================== */
+    .sidebar {
+      width: 260px;
+      background: #0b1120;
+      border-right: 1px solid #1f2937;
+      overflow-y: auto;
+      padding: 12px;
+      color: #e5e7eb;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
     }
 
-    .btn-primary {
-      background: #2563eb;
-      color: #fff;
-      box-shadow: 0 4px 10px rgba(37, 99, 235, 0.3);
+    .sidebar-header {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-bottom: 8px;
     }
 
-    .btn-primary:hover {
-      background: #1d4ed8;
-      transform: translateY(-1px);
-      box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35);
-    }
-
-    .btn-ghost {
-      background: #eef2ff;
-      color: #1e293b;
-    }
-
-    .btn-ghost:hover {
-      background: #e0e7ff;
-    }
-
-    .btn-danger {
-      background: #fee2e2;
-      color: #b91c1c;
-    }
-
-    .btn-danger:hover {
-      background: #fecaca;
-    }
-
-    .file-info {
-      font-size: 12px;
-      color: #555;
-      margin-left: auto;
-      text-align: right;
-    }
-
-    .file-info strong {
-      font-weight: 600;
-    }
-
-    /* 3カラムレイアウト：左＝シーン一覧 / 中央＝内容 / 右＝選択肢 */
-    .main-layout {
-      display: grid;
-      grid-template-columns: 260px minmax(0, 2fr) minmax(0, 1.4fr);
-      gap: 24px;
-      align-items: flex-start;
-    }
-
-    @media (max-width: 1100px) {
-      .main-layout {
-        grid-template-columns: 220px minmax(0, 2fr);
-      }
-      .choices-panel {
-        grid-column: 1 / -1;
-      }
-    }
-
-    @media (max-width: 900px) {
-      .main-layout {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    /* 汎用パネル */
-    .panel {
-      background: #f9fafb;
-      border-radius: 10px;
-      padding: 16px 18px 18px;
-      border: 1px solid #e5e7eb;
-    }
-
-    .panel-title {
+    .app-title {
       font-size: 14px;
-      font-weight: 600;
-      margin-bottom: 12px;
-      display: flex;
-      justify-content: space-between;
-      align-items: baseline;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #bfdbfe;
     }
 
     .scene-counter {
       font-size: 12px;
-      color: #6b7280;
+      color: #9ca3af;
     }
 
+    #scene-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .scene-list-item {
+      border-radius: 10px;
+      padding: 7px;
+      background: rgba(15, 23, 42, 0.85);
+      display: flex;
+      gap: 8px;
+      cursor: pointer;
+      border: 1px solid rgba(55, 65, 81, 0.9);
+      transition: 0.15s ease;
+    }
+
+    .scene-list-item:hover {
+      background: rgba(30, 64, 175, 0.9);
+      transform: translateY(-1px);
+      box-shadow: 0 8px 16px rgba(15, 23, 42, 0.5);
+    }
+
+    .scene-list-item.active {
+      background: linear-gradient(135deg, #38bdf8, #6366f1);
+      border-color: #22d3ee;
+      box-shadow: 0 10px 22px rgba(59, 130, 246, 0.5);
+    }
+
+    .scene-list-thumb {
+      width: 64px;
+      height: 48px;
+      border-radius: 6px;
+      background: #111827;
+      color: #e5e7eb;
+      font-size: 11px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid #1f2937;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .scene-list-thumb-char {
+      position: absolute;
+      bottom: 0;
+      width: 100%;
+      height: 70%;
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center bottom;
+      pointer-events: none;
+    }
+
+    .scene-list-main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      min-width: 0;
+    }
+
+    .scene-list-item-header {
+      font-size: 11px;
+      display: flex;
+      justify-content: space-between;
+      color: #cbd5f5;
+      margin-bottom: 2px;
+    }
+
+    .scene-list-index { font-weight: 600; }
+    .scene-list-flags { font-size: 10px; opacity: 0.9; }
+
+    .scene-list-text {
+      font-size: 11px;
+      color: #e5e7eb;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* ========================== メインエリア ========================== */
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .toolbar {
+      background: rgba(15, 23, 42, 0.96);
+      padding: 10px 14px;
+      display: flex;
+      gap: 8px;
+      border-bottom: 1px solid #1f2937;
+      align-items: center;
+      color: #e5e7eb;
+    }
+
+    .toolbar-left { display: flex; gap: 8px; align-items: center; }
+
+    .toolbar-right {
+      margin-left: auto;
+      font-size: 11px;
+      color: #9ca3af;
+      max-width: 55%;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      overflow: hidden;
+    }
+
+    /* ========================== ボタン共通 ========================== */
+    .btn {
+      border: none;
+      border-radius: 999px;
+      padding: 9px 18px;
+      font-size: 12px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 500;
+      letter-spacing: 0.02em;
+      transition: 0.15s ease;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #2563eb, #4f46e5);
+      color: white;
+      box-shadow: 0 10px 20px rgba(37, 99, 235, 0.35);
+    }
+
+    .btn-primary:hover {
+      filter: brightness(1.05);
+      transform: translateY(-2px);
+    }
+
+    .btn-primary:active { transform: scale(0.97); }
+
+    .btn-ghost {
+      background: rgba(148, 163, 184, 0.12);
+      color: #374151;
+      box-shadow: 0 4px 10px rgba(15, 23, 42, 0.1);
+    }
+
+    .btn-ghost:hover {
+      background: rgba(148, 163, 184, 0.22);
+      transform: translateY(-2px);
+    }
+
+    .btn-ghost:active { transform: scale(0.97); }
+
+    /* ===== ナビ周りのカラフルボタン ===== */
+    .btn-nav-prev,
+    .btn-nav-next {
+      background: linear-gradient(135deg, #f9fafb, #e5e7eb);
+      color: #111827;
+      box-shadow: 0 8px 18px rgba(148, 163, 184, 0.45);
+      border: 1px solid #d1d5db;
+    }
+
+    .btn-nav-prev:hover,
+    .btn-nav-next:hover {
+      background: linear-gradient(135deg, #ffffff, #e5e7eb);
+      transform: translateY(-2px);
+      box-shadow: 0 12px 24px rgba(148, 163, 184, 0.6);
+    }
+
+    .btn-nav-prev:active,
+    .btn-nav-next:active {
+      transform: scale(0.97);
+    }
+
+    .btn-nav-add {
+      background: linear-gradient(135deg, #2563eb, #4f46e5);
+      color: #ffffff;
+      box-shadow: 0 12px 26px rgba(37, 99, 235, 0.55);
+    }
+
+    .btn-nav-add:hover {
+      filter: brightness(1.07);
+      transform: translateY(-2px);
+    }
+
+    .btn-nav-add:active { transform: scale(0.97); }
+
+    .btn-nav-delete {
+      background: linear-gradient(135deg, #1f1f1f, #000000);
+      color: #ffffff;
+      border: 1px solid #000;
+      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.4);
+    }
+
+    .btn-nav-delete:hover {
+      background: linear-gradient(135deg, #2a2a2a, #080808);
+      transform: translateY(-2px);
+      box-shadow: 0 12px 24px rgba(0, 0, 0, 0.55);
+    }
+
+    .btn-nav-delete:active {
+      background: linear-gradient(135deg, #131313, #000000);
+      transform: scale(0.97);
+    }
+
+    .btn-nav-preview {
+      background: linear-gradient(135deg, #f97316, #ea580c);
+      color: #ffffff;
+      box-shadow: 0 10px 22px rgba(234, 88, 12, 0.55);
+    }
+
+    .btn-nav-preview:hover {
+      filter: brightness(1.05);
+      transform: translateY(-2px);
+    }
+
+    .btn-nav-preview:active { transform: scale(0.97); }
+
+    /* ========================== エディタ本体 ========================== */
+    .editor-area {
+      flex: 1;
+      overflow-y: auto;
+      padding: 18px 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.94);
+      border-radius: 14px;
+      padding: 14px 16px;
+      box-shadow: 0 14px 30px rgba(15, 23, 42, 0.08);
+      border: 1px solid rgba(148, 163, 184, 0.35);
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 10px;
+    }
+
+    .card-title { font-size: 14px; font-weight: 600; color: #111827; }
+    .card-subtitle { font-size: 11px; color: #6b7280; }
+
+    .card-body { display: flex; flex-direction: column; gap: 10px; }
+
+    /* グリッドレイアウト（共通背景／シーン編集） */
+    .scene-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.6fr) minmax(0, 1.3fr);
+      gap: 16px;
+    }
+
+    .scene-grid-half {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    /* 入力系 */
     .field-group {
-      margin-bottom: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-bottom: 10px;
     }
 
     .field-label {
-      font-size: 12px;
-      font-weight: 600;
-      color: #374151;
-      margin-bottom: 4px;
-      display: inline-block;
-    }
-
-    .field-help {
       font-size: 11px;
-      color: #6b7280;
-      margin-left: 4px;
-      font-weight: normal;
+      font-weight: 600;
+      color: #4b5563;
     }
 
     input[type="text"],
@@ -169,366 +331,276 @@
     select {
       width: 100%;
       padding: 6px 8px;
-      border-radius: 6px;
-      border: 1px solid #d1d5db;
       font-size: 13px;
-      outline: none;
-      transition: border-color 0.15s ease, box-shadow 0.15s ease;
-      background: #fff;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      background: #f9fafb;
+      transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
     }
 
     input[type="text"]:focus,
     input[type="number"]:focus,
     select:focus {
+      outline: none;
       border-color: #2563eb;
-      box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.35);
-    }
-
-    .inline-inputs {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    @media (min-width: 720px) {
-      .inline-inputs {
-        flex-direction: row;
-      }
-    }
-
-    .inline-inputs > div {
-      flex: 1;
+      box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.4);
+      background: #ffffff;
     }
 
     .drop-zone {
-      border: 2px dashed #94a3b8;
+      border: 2px dashed #cbd5e1;
       border-radius: 8px;
       height: 80px;
       display: flex;
       align-items: center;
       justify-content: center;
-      color: #475569;
-      margin-bottom: 6px;
-      transition: border-color 0.2s, background-color 0.2s;
-      user-select: none;
       background: #f8fafc;
-      padding: 4px 8px;
       text-align: center;
-      font-size: 12px;
+      font-size: 11px;
+      color: #64748b;
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      transition: 0.2s;
       white-space: pre-line;
+      padding: 4px;
     }
+
+    .drop-zone.small { height: 64px; }
 
     .drop-zone:hover {
-      border-color: #2563eb;
-      background: #eef2ff;
+      border-color: #60a5fa;
+      background-color: #eff6ff;
     }
 
-    .checkbox-group {
+    .flags-row {
       display: flex;
-      flex-direction: column;
-      gap: 4px;
+      gap: 12px;
       font-size: 12px;
-      margin-top: 4px;
-    }
-
-    .checkbox-group label {
-      display: flex;
-      align-items: flex-start;
-      gap: 6px;
       color: #374151;
-      line-height: 1.4;
-    }
-
-    .checkbox-group input {
-      margin-top: 2px;
-    }
-
-    .scene-nav {
-      display: flex;
-      gap: 8px;
-      margin-top: 12px;
       flex-wrap: wrap;
     }
 
-    .scene-nav .btn {
-      flex: 0 0 auto;
-    }
-
-    /* シーン一覧パネル（左） */
-    .scene-list-panel {
-      background: #f9fafb;
-      border-radius: 10px;
-      padding: 12px 10px;
-      border: 1px solid #e5e7eb;
-      max-height: 640px;
-      overflow-y: auto;
-    }
-
-    .scene-list-panel .panel-title {
-      margin-bottom: 8px;
-    }
-
-    .scene-list {
-      display: flex;
-      flex-direction: column;
+    .flags-row label {
+      display: inline-flex;
+      align-items: center;
       gap: 4px;
-    }
-
-    .scene-list-item {
-      display: flex;
-      gap: 8px;
-      padding: 6px 8px;
-      border-radius: 8px;
-      margin-bottom: 2px;
       cursor: pointer;
-      font-size: 12px;
-      align-items: center;
-      transition: background-color 0.12s ease, box-shadow 0.12s ease;
     }
 
-    .scene-list-item:hover {
-      background: #e5edff;
-    }
-
-    .scene-list-item.active {
-      background: #dbeafe;
-      box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.3);
-    }
-
-    /* 左の小サムネ（背景） */
-    .scene-list-thumb {
-      width: 56px;
-      height: 40px;
-      border-radius: 6px;
-      background: #e5e7eb;
-      position: relative;
-      overflow: hidden;
-      flex-shrink: 0;
+    .nav-row {
+      margin-top: 8px;
       display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
       align-items: center;
-      justify-content: center;
-      font-size: 10px;
-      color: #6b7280;
     }
 
-    /* サムネ上のキャラアイコン */
-    .scene-list-thumb-char {
-      position: absolute;
-      bottom: -4px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 40px;
-      height: 40px;
-      background-size: contain;
-      background-position: center bottom;
-      background-repeat: no-repeat;
-      filter: drop-shadow(0 3px 6px rgba(0,0,0,0.5));
-    }
-
-    .scene-list-main {
-      flex: 1;
-      min-width: 0;
-    }
-
-    .scene-list-item-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 2px;
-    }
-
-    .scene-list-index {
-      font-weight: 600;
-      color: #4b5563;
-    }
-
-    .scene-list-flags {
-      font-size: 10px;
-      color: #9ca3af;
-    }
-
-    .scene-list-text {
-      font-size: 11px;
-      color: #374151;
-      white-space: nowrap;
-      text-overflow: ellipsis;
-      overflow: hidden;
-    }
-
-    /* 右：選択肢エリア */
-    .choices-panel {
-      background: #f9fafb;
-      border-radius: 10px;
-      padding: 14px 16px 16px;
-      border: 1px solid #e5e7eb;
-    }
-
+    /* 選択肢 */
     .choice-item {
-      background: #ffffff;
+      padding: 8px;
+      background: #f9fafb;
       border-radius: 8px;
       border: 1px solid #e5e7eb;
-      padding: 8px 10px;
       margin-bottom: 8px;
-    }
-
-    .choice-item label {
-      font-size: 11px;
-      color: #4b5563;
-      display: block;
-      margin-bottom: 4px;
-    }
-
-    .choice-item input[type="text"],
-    .choice-item select {
-      font-size: 12px;
-      padding: 4px 6px;
     }
 
     .choice-header {
       display: flex;
       justify-content: space-between;
-      align-items: center;
-      margin-bottom: 4px;
+      margin-bottom: 6px;
       font-size: 12px;
-      color: #6b7280;
     }
+
+    .btn-danger {
+      border-radius: 999px;
+      background: #fee2e2;
+      color: #b91c1c;
+      border: none;
+      padding: 4px 10px;
+      font-size: 11px;
+      cursor: pointer;
+    }
+
+    .btn-danger:hover { background: #fecaca; }
 
     .choices-empty {
       font-size: 12px;
       color: #9ca3af;
-      padding: 8px 4px;
+      padding: 4px 2px;
     }
 
-    .choices-toolbar {
-      display: flex;
-      justify-content: flex-end;
-      margin-top: 8px;
-    }
-
-    /* next フィールドは UI から隠す（内部では値だけ持たせる） */
-    #next-field-group {
-      display: none;
-    }
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #9ca3af; border-radius: 999px; }
   </style>
 </head>
+
 <body>
-  <div class="app-container">
-    <h1>シナリオ JSON エディタ</h1>
-    <p class="app-subtitle">ノベルゲーム用のシーンデータを、GUIで編集できるツールです。</p>
 
-    <!-- 上部ツールバー -->
-    <div class="toolbar">
-      <button id="open-file-btn" class="btn btn-primary">JSON配列を開く</button>
-      <button id="save-file-btn" class="btn btn-ghost">保存</button>
-      <button id="preview-scene-btn" class="btn btn-ghost">プレビュー</button>
-
-      <div class="file-info">
-        ファイル: <strong><span id="file-path">(なし)</span></strong><br />
-        シーン <span id="scene-index">0</span> / <span id="scene-total">0</span>
+  <!-- ========================== サイドバー ========================== -->
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <div class="app-title">Scenario JSON Editor</div>
+      <div class="scene-counter">
+        Scene <span id="scene-index">0</span> / <span id="scene-total">0</span>
       </div>
     </div>
 
-    <div class="main-layout">
-      <!-- 左：シーン一覧 -->
-      <div class="scene-list-panel">
-        <div class="panel-title">
-          <span>シーン一覧</span>
-        </div>
-        <div id="scene-list" class="scene-list"></div>
+    <div id="scene-list"></div>
+  </div>
+
+  <!-- ========================== メイン ========================== -->
+  <div class="main">
+
+    <!-- ツールバー -->
+    <div class="toolbar">
+      <div class="toolbar-left">
+        <button id="open-file-btn" class="btn btn-primary">📂 JSONを開く</button>
+        <button id="save-file-btn" class="btn btn-ghost">💾 保存</button>
       </div>
 
-      <!-- 中央：シーン編集 -->
-      <div class="panel">
-        <div class="panel-title">
-          <span>シーン内容</span>
+      <div class="toolbar-right">
+        <span id="file-path">(なし)</span>
+      </div>
+    </div>
+
+    <!-- ========================== エディタ ========================== -->
+    <div class="editor-area">
+
+      <!-- 共通背景設定 -->
+      <section class="card">
+        <div class="card-header">
+          <div class="card-title">共通背景設定</div>
+          <div class="card-subtitle">タイトル画面・結果画面の背景（全シーン共通）</div>
         </div>
 
-        <div class="field-group">
-          <span class="field-label">
-            シナリオテキスト
-            <span class="field-help">（2行まで）</span>
-          </span>
-          <div class="inline-inputs">
-            <div>
-              <input id="text1" type="text" placeholder="テキスト1を入力" />
+        <div class="card-body scene-grid">
+          <!-- タイトル背景 -->
+          <div class="scene-grid-half">
+            <div class="field-group">
+              <span class="field-label">タイトル背景</span>
+              <div id="title-bg-drop" class="drop-zone small">ここに画像をドロップ</div>
+              <input id="titleBackgroundName" type="text" placeholder="例: pictures/title_bg" />
             </div>
-            <div>
-              <input id="text2" type="text" placeholder="テキスト2を入力" />
+          </div>
+
+          <!-- 結果背景 -->
+          <div class="scene-grid-half">
+            <div class="field-group">
+              <span class="field-label">結果背景</span>
+              <div id="result-bg-drop" class="drop-zone small">ここに画像をドロップ</div>
+              <input id="resultBackgroundName" type="text" placeholder="例: pictures/result_bg" />
             </div>
           </div>
         </div>
+      </section>
 
-        <!-- next は内部用。UI からは非表示 -->
-        <div class="field-group" id="next-field-group">
-          <label class="field-label" for="next">
-            next
-            <span class="field-help">（次のシーン番号）</span>
-          </label>
-          <input id="next" type="number" />
+      <!-- シーン編集 -->
+      <section class="card">
+        <div class="card-header">
+          <div class="card-title">シーン編集</div>
+          <div class="card-subtitle">テキスト／背景／キャラ画像の設定</div>
         </div>
 
-        <div class="field-group">
-          <span class="field-label">背景画像</span>
-          <div id="background-drop" class="drop-zone">
-            ここに背景画像ファイルをドロップすると、<br />
-            pictures/ファイル名（拡張子なし）が設定されます
+        <div class="card-body scene-grid">
+
+          <!-- 左カラム -->
+          <div class="scene-grid-half">
+
+            <div class="field-group">
+              <label class="field-label">テキスト1</label>
+              <input id="text1" type="text">
+            </div>
+
+            <div class="field-group">
+              <label class="field-label">テキスト2</label>
+              <input id="text2" type="text">
+            </div>
+
+            <div class="field-group" style="display:none;">
+              <label class="field-label">next</label>
+              <input id="next" type="number">
+            </div>
+
+            <div class="field-group">
+              <div class="flags-row">
+                <label><input id="showBackground" type="checkbox" checked> 背景を表示</label>
+                <label><input id="showCharacter" type="checkbox" checked> キャラを表示</label>
+                <label><input id="isTransitionToResult" type="checkbox"> 結果画面へ遷移</label>
+              </div>
+            </div>
+
+            <!-- ナビボタン行（シーン編集の一番下） -->
+            <div class="nav-row">
+              <button id="prev-scene-btn" class="btn btn-nav-prev">← 前のシーン</button>
+              <button id="next-scene-btn" class="btn btn-nav-next">次のシーン →</button>
+              <button id="addNextScene" class="btn btn-nav-add">＋ シーン追加</button>
+              <button id="delete-scene-btn" class="btn btn-nav-delete">削除</button>
+              <button id="preview-scene-btn" class="btn btn-nav-preview">▶ プレビュー</button>
+            </div>
+
           </div>
-          <input id="backgroundName" type="text" placeholder="背景画像キー（例: pictures/bg_room）" />
-        </div>
 
-        <div class="field-group">
-          <label class="field-label" for="characterName">キャラ名</label>
-          <input id="characterName" type="text" placeholder="キャラクター名（例: ユウキ）" />
-        </div>
+          <!-- 右カラム -->
+          <div class="scene-grid-half">
 
-        <div class="field-group">
-          <span class="field-label">キャラ画像</span>
-          <div id="character-drop" class="drop-zone">
-            ここにキャラ画像ファイルをドロップすると、<br />
-            pictures/ファイル名（拡張子なし）が設定されます
-          </div>
-          <input id="characterPicture" type="text" placeholder="キャラ画像キー（例: pictures/char_yuuki）" />
-        </div>
+            <div class="field-group">
+              <span class="field-label">背景画像</span>
+              <div id="background-drop" class="drop-zone">画像をドロップ</div>
+              <input id="backgroundName" type="text" placeholder="例: pictures/bg_room">
+            </div>
 
-        <div class="field-group">
-          <span class="field-label">表示設定</span>
-          <div class="checkbox-group">
-            <label>
-              <input id="showBackground" type="checkbox" checked />
-              <span>背景を表示する（ONにすると、このシーンで背景が表示されます）</span>
-            </label>
-            <label>
-              <input id="showCharacter" type="checkbox" checked />
-              <span>キャラクターを表示する（ONにすると、このシーンでキャラが表示されます）</span>
-            </label>
-            <label>
-              <input id="isTransitionToResult" type="checkbox" />
-              <span>結果画面へ遷移（ONにすると、このシーンの後に結果画面へ移動します）</span>
-            </label>
+            <div class="field-group">
+              <label class="field-label">キャラ名</label>
+              <input id="characterName" type="text">
+            </div>
+
+            <div class="field-group">
+              <span class="field-label">キャラ画像</span>
+              <div id="character-drop" class="drop-zone">画像をドロップ</div>
+              <input id="characterPicture" type="text" placeholder="例: pictures/char_heroine">
+            </div>
+
           </div>
         </div>
+      </section>
 
-        <div class="scene-nav">
-          <button id="prev-scene-btn" class="btn btn-ghost">&lt; 前のシーン</button>
-          <button id="next-scene-btn" class="btn btn-ghost">次のシーン &gt;</button>
-          <button id="addNextScene" class="btn btn-primary">次のシーンを追加</button>
-          <button id="delete-scene-btn" class="btn btn-danger">このシーンを削除</button>
-        </div>
-      </div>
-      <!-- 右：選択肢編集 -->
-      <div class="choices-panel">
-        <div class="panel-title">
-          <span>選択肢（最後のシーンに追加してね）</span>
+      <!-- 選択肢 -->
+      <!-- <section class="card">
+        <div class="card-header">
+          <div class="card-title">選択肢</div>
+          <div class="card-subtitle">最大2つまで追加できます</div>
         </div>
 
-        <div id="choices-container">
-          <div class="choices-empty">このシーンには、まだ選択肢がありません。</div>
+        <div class="card-body">
+          <div id="choices-container"></div>
+          <button id="add-choice-btn" class="btn btn-primary">＋ 選択肢追加</button>
         </div>
+      </section> -->
+      <section class="card">
+  <div class="card-header">
+    <div class="card-title">選択肢</div>
+    <div class="card-subtitle">最大2つまで追加できます</div>
+  </div>
 
-        <div class="choices-toolbar">
-          <button id="add-choice-btn" class="btn btn-primary">＋ 選択肢を追加</button>
-        </div>
-      </div>
+  <div class="card-body">
+    <div id="choices-container"></div>
+
+    <div class="choices-actions">
+      <button id="add-choice-btn" class="btn btn-primary">＋ 選択肢追加</button>
+      <!-- ★追加：新しいシナリオJSON作成ボタン -->
+      <!-- <button id="create-choice-json-btn" class="btn btn-ghost">
+        ＋ 新しいシナリオ JSON
+      </button> -->
+
+
+    </div>
+  </div>
+</section>
+
+
     </div>
   </div>
 
